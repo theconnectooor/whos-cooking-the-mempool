@@ -1,0 +1,772 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Who's Cooking the Bitcoin Mempool? 🔥</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            color: #ffffff;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+            padding: 40px 20px;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .header h1 {
+            font-size: 3rem;
+            margin-bottom: 10px;
+            background: linear-gradient(45deg, #f7931e, #ffb347);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .session-status {
+            padding: 15px 25px;
+            border-radius: 15px;
+            margin: 20px 0;
+            font-size: 1.2rem;
+            font-weight: 600;
+            text-align: center;
+            transition: all 0.3s ease;
+        }
+
+        .session-open {
+            background: linear-gradient(45deg, #28a745, #34ce57);
+            border: 2px solid #28a745;
+            animation: pulse 2s infinite;
+        }
+
+        .session-closed {
+            background: rgba(108, 117, 125, 0.2);
+            border: 2px solid #6c757d;
+        }
+
+        .session-waiting {
+            background: rgba(255, 193, 7, 0.2);
+            border: 2px solid #ffc107;
+        }
+
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(40, 167, 69, 0.7); }
+            70% { box-shadow: 0 0 0 10px rgba(40, 167, 69, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(40, 167, 69, 0); }
+        }
+
+        .mempool-stats {
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            flex-wrap: wrap;
+            margin-top: 20px;
+        }
+
+        .stat-card {
+            background: rgba(247, 147, 30, 0.1);
+            padding: 15px 25px;
+            border-radius: 15px;
+            border: 1px solid rgba(247, 147, 30, 0.3);
+            text-align: center;
+            transition: all 0.3s ease;
+        }
+
+        .stat-card.priority-high {
+            background: rgba(220, 53, 69, 0.2);
+            border-color: rgba(220, 53, 69, 0.5);
+            animation: glow 2s infinite alternate;
+        }
+
+        @keyframes glow {
+            0% { box-shadow: 0 0 5px rgba(220, 53, 69, 0.5); }
+            100% { box-shadow: 0 0 20px rgba(220, 53, 69, 0.8); }
+        }
+
+        .stat-number {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #f7931e;
+        }
+
+        .stat-number.high-fee {
+            color: #dc3545;
+        }
+
+        .stat-label {
+            font-size: 0.9rem;
+            opacity: 0.8;
+        }
+
+        .content-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 40px;
+            margin-top: 40px;
+        }
+
+        .submission-section, .voting-section {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            padding: 30px;
+            border-radius: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .form-group {
+            margin-bottom: 25px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #f7931e;
+        }
+
+        input, textarea, select {
+            width: 100%;
+            padding: 15px;
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            border-radius: 10px;
+            background: rgba(255, 255, 255, 0.1);
+            color: #ffffff;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+        }
+
+        input:focus, textarea:focus, select:focus {
+            outline: none;
+            border-color: #f7931e;
+            box-shadow: 0 0 20px rgba(247, 147, 30, 0.3);
+        }
+
+        textarea {
+            min-height: 120px;
+            resize: vertical;
+        }
+
+        .submit-btn {
+            background: linear-gradient(45deg, #f7931e, #ffb347);
+            color: #ffffff;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 10px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            width: 100%;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .submit-btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(247, 147, 30, 0.4);
+        }
+
+        .submit-btn:disabled {
+            background: #6c757d;
+            cursor: not-allowed;
+            opacity: 0.6;
+        }
+
+        .answer-card {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 20px;
+            border-radius: 15px;
+            margin-bottom: 20px;
+            border-left: 4px solid #f7931e;
+            transition: all 0.3s ease;
+        }
+
+        .answer-card.winner {
+            border-left-color: #28a745;
+            background: rgba(40, 167, 69, 0.1);
+        }
+
+        .answer-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .answer-author {
+            font-weight: 600;
+            color: #f7931e;
+        }
+
+        .vote-section {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .vote-btn {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            color: #ffffff;
+            padding: 8px 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 1rem;
+        }
+
+        .vote-btn:hover:not(:disabled) {
+            background: rgba(255, 255, 255, 0.2);
+            transform: scale(1.1);
+        }
+
+        .vote-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .vote-btn.upvoted {
+            background: #28a745;
+            border-color: #28a745;
+        }
+
+        .vote-btn.downvoted {
+            background: #dc3545;
+            border-color: #dc3545;
+        }
+
+        .vote-count {
+            font-weight: 600;
+            min-width: 30px;
+            text-align: center;
+            color: #f7931e;
+        }
+
+        .answer-text {
+            line-height: 1.6;
+            margin-bottom: 10px;
+        }
+
+        .answer-timestamp {
+            font-size: 0.8rem;
+            opacity: 0.7;
+            text-align: right;
+        }
+
+        .winner-banner {
+            background: linear-gradient(45deg, #28a745, #34ce57);
+            color: white;
+            padding: 10px;
+            border-radius: 10px;
+            text-align: center;
+            font-weight: 600;
+            margin-bottom: 10px;
+        }
+
+        .session-history {
+            margin-top: 40px;
+            padding: 30px;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .history-item {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 20px;
+            border-radius: 15px;
+            margin-bottom: 15px;
+            border-left: 4px solid #28a745;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px;
+            opacity: 0.7;
+        }
+
+        .fire-emoji {
+            font-size: 2rem;
+            animation: flicker 2s infinite alternate;
+        }
+
+        @keyframes flicker {
+            0% { opacity: 1; }
+            100% { opacity: 0.7; }
+        }
+
+        .loading {
+            opacity: 0.6;
+        }
+
+        .error-message {
+            background: rgba(220, 53, 69, 0.2);
+            border: 1px solid rgba(220, 53, 69, 0.5);
+            color: #ffffff;
+            padding: 15px;
+            border-radius: 10px;
+            margin: 10px 0;
+        }
+
+        @media (max-width: 768px) {
+            .content-grid {
+                grid-template-columns: 1fr;
+                gap: 20px;
+            }
+            
+            .header h1 {
+                font-size: 2rem;
+            }
+            
+            .mempool-stats {
+                gap: 15px;
+            }
+            
+            .stat-card {
+                padding: 10px 15px;
+            }
+
+            .vote-section {
+                flex-direction: column;
+                gap: 5px;
+            }
+        }
+
+        /* Custom scrollbar */
+        .voting-section {
+            max-height: 600px;
+            overflow-y: auto;
+        }
+
+        .voting-section::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .voting-section::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+        }
+
+        .voting-section::-webkit-scrollbar-thumb {
+            background: #f7931e;
+            border-radius: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Who's Cooking the Bitcoin Mempool? <span class="fire-emoji">🔥</span></h1>
+            <p>When fees spike above 10 sat/vB, the community votes on who's responsible!</p>
+            
+            <div class="session-status" id="session-status">
+                <span id="status-text">Checking mempool conditions...</span>
+            </div>
+
+            <div class="mempool-stats">
+                <div class="stat-card" id="priority-fee-card">
+                    <div class="stat-number" id="priority-fee">Loading...</div>
+                    <div class="stat-label">Highest Priority Fee (sat/vB)</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="pending-tx">Loading...</div>
+                    <div class="stat-label">Pending Transactions</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="active-answers">0</div>
+                    <div class="stat-label">Active Theories</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="content-grid">
+            <div class="submission-section">
+                <h2 style="margin-bottom: 20px; color: #f7931e;">Submit Your Theory</h2>
+                <div id="submission-form-container">
+                    <form id="submission-form">
+                        <div class="form-group">
+                            <label for="author">Your Name/Handle</label>
+                            <input type="text" id="author" name="author" placeholder="BitcoinDetective" required>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="theory">Who's cooking the mempool?</label>
+                            <textarea id="theory" name="theory" placeholder="Explain who or what is causing the high fees..." required></textarea>
+                        </div>
+                        
+                        <button type="submit" class="submit-btn" id="submit-btn">Submit Theory 🚀</button>
+                    </form>
+                </div>
+            </div>
+
+            <div class="voting-section">
+                <h2 style="margin-bottom: 20px; color: #f7931e;">Community Theories</h2>
+                <div id="answers-container">
+                    <div class="empty-state">
+                        <div style="font-size: 3rem; margin-bottom: 10px;">⏳</div>
+                        <p>Waiting for mempool to heat up...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="session-history" id="session-history" style="display: none;">
+            <h2 style="margin-bottom: 20px; color: #f7931e;">Previous Sessions</h2>
+            <div id="history-container"></div>
+        </div>
+    </div>
+
+    <script>
+        // Application state
+        let currentSession = null;
+        let sessionHistory = [];
+        let userVotes = new Map(); // Track user votes per answer
+        let updateInterval;
+
+        // API configuration
+        const MEMPOOL_API_BASE = 'https://mempool.space/api';
+        const FEE_THRESHOLD = 10; // sat/vB threshold
+        const UPDATE_INTERVAL = 30000; // 30 seconds
+
+        // Initialize the application
+        async function initializeApp() {
+            try {
+                await updateMempoolData();
+                startPeriodicUpdates();
+            } catch (error) {
+                console.error('Failed to initialize app:', error);
+                showError('Failed to connect to mempool.space API. Some features may not work.');
+            }
+        }
+
+        // Fetch current mempool data from mempool.space API
+        async function updateMempoolData() {
+            try {
+                // Get recommended fees
+                const feesResponse = await fetch(`${MEMPOOL_API_BASE}/v1/fees/recommended`);
+                const feesData = await feesResponse.json();
+                
+                // Get mempool info
+                const mempoolResponse = await fetch(`${MEMPOOL_API_BASE}/mempool`);
+                const mempoolData = await mempoolResponse.json();
+
+                const highestPriorityFee = feesData.fastestFee;
+                const pendingTx = mempoolData.count;
+
+                // Update UI
+                updateMempoolStats(highestPriorityFee, pendingTx);
+                
+                // Check session status
+                checkSessionStatus(highestPriorityFee);
+
+            } catch (error) {
+                console.error('Error fetching mempool data:', error);
+                // Use fallback/mock data
+                const mockFee = Math.floor(Math.random() * 20 + 5);
+                const mockTx = Math.floor(Math.random() * 50000 + 100000);
+                updateMempoolStats(mockFee, mockTx);
+                checkSessionStatus(mockFee);
+            }
+        }
+
+        function updateMempoolStats(priorityFee, pendingTx) {
+            const priorityFeeElement = document.getElementById('priority-fee');
+            const priorityFeeCard = document.getElementById('priority-fee-card');
+            const pendingTxElement = document.getElementById('pending-tx');
+
+            priorityFeeElement.textContent = priorityFee;
+            pendingTxElement.textContent = pendingTx.toLocaleString();
+
+            // Highlight high fees
+            if (priorityFee >= FEE_THRESHOLD) {
+                priorityFeeCard.classList.add('priority-high');
+                priorityFeeElement.classList.add('high-fee');
+            } else {
+                priorityFeeCard.classList.remove('priority-high');
+                priorityFeeElement.classList.remove('high-fee');
+            }
+        }
+
+        function checkSessionStatus(priorityFee) {
+            const statusElement = document.getElementById('session-status');
+            const statusText = document.getElementById('status-text');
+            const submitBtn = document.getElementById('submit-btn');
+
+            if (priorityFee >= FEE_THRESHOLD) {
+                if (!currentSession) {
+                    // Start new session
+                    startNewSession();
+                }
+                
+                statusElement.className = 'session-status session-open';
+                statusText.textContent = `🔥 Session Active! Fees at ${priorityFee} sat/vB - Vote on theories!`;
+                submitBtn.disabled = false;
+                
+            } else {
+                if (currentSession) {
+                    // End current session
+                    endCurrentSession();
+                }
+                
+                statusElement.className = 'session-status session-waiting';
+                statusText.textContent = `⏳ Waiting for fees to spike (currently ${priority.Fee} sat/vB)`;
+                submitBtn.disabled = true;
+            }
+        }
+
+        function startNewSession() {
+            currentSession = {
+                id: Date.now(),
+                startTime: new Date(),
+                answers: [],
+                ended: false
+            };
+            
+            console.log('New session started:', currentSession.id);
+            renderAnswers();
+        }
+
+        function endCurrentSession() {
+            if (!currentSession || currentSession.ended) return;
+
+            currentSession.endTime = new Date();
+            currentSession.ended = true;
+
+            // Find winning answer (highest votes)
+            const winner = currentSession.answers.reduce((prev, current) => {
+                const prevScore = (prev.upvotes || 0) - (prev.downvotes || 0);
+                const currentScore = (current.upvotes || 0) - (current.downvotes || 0);
+                return currentScore > prevScore ? current : prev;
+            }, currentSession.answers[0]);
+
+            if (winner) {
+                currentSession.winner = winner;
+            }
+
+            // Add to history
+            sessionHistory.unshift({ ...currentSession });
+            
+            // Clear current session
+            currentSession = null;
+            userVotes.clear();
+
+            console.log('Session ended, winner:', winner?.author);
+            renderAnswers();
+            renderSessionHistory();
+        }
+
+        // Form submission handler
+        document.getElementById('submission-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            if (!currentSession) {
+                alert('No active session! Wait for fees to spike above 10 sat/vB.');
+                return;
+            }
+            
+            const formData = new FormData(e.target);
+            const answer = {
+                id: Date.now(),
+                author: formData.get('author').trim(),
+                theory: formData.get('theory').trim(),
+                timestamp: new Date().toLocaleString(),
+                upvotes: 0,
+                downvotes: 0
+            };
+            
+            if (!answer.author || !answer.theory) {
+                alert('Please fill in all fields!');
+                return;
+            }
+            
+            currentSession.answers.push(answer);
+            renderAnswers();
+            updateActiveAnswersCount();
+            
+            // Reset form
+            e.target.reset();
+            
+            // Show success feedback
+            const submitBtn = document.querySelector('.submit-btn');
+            const originalText = submitBtn.textContent;
+            submitBtn.textContent = 'Theory Submitted! 🎉';
+            submitBtn.style.background = 'linear-gradient(45deg, #28a745, #34ce57)';
+            
+            setTimeout(() => {
+                submitBtn.textContent = originalText;
+                submitBtn.style.background = 'linear-gradient(45deg, #f7931e, #ffb347)';
+            }, 2000);
+        });
+
+        function vote(answerId, voteType) {
+            if (!currentSession) return;
+
+            const answer = currentSession.answers.find(a => a.id === answerId);
+            if (!answer) return;
+
+            const previousVote = userVotes.get(answerId);
+            
+            // Remove previous vote if exists
+            if (previousVote === 'up') {
+                answer.upvotes = Math.max(0, answer.upvotes - 1);
+            } else if (previousVote === 'down') {
+                answer.downvotes = Math.max(0, answer.downvotes - 1);
+            }
+
+            // Apply new vote if different from previous
+            if (previousVote !== voteType) {
+                if (voteType === 'up') {
+                    answer.upvotes = (answer.upvotes || 0) + 1;
+                    userVotes.set(answerId, 'up');
+                } else if (voteType === 'down') {
+                    answer.downvotes = (answer.downvotes || 0) + 1;
+                    userVotes.set(answerId, 'down');
+                }
+            } else {
+                // Same vote clicked, remove it
+                userVotes.delete(answerId);
+            }
+
+            renderAnswers();
+        }
+
+        function renderAnswers() {
+            const container = document.getElementById('answers-container');
+            
+            if (!currentSession || currentSession.answers.length === 0) {
+                const statusText = currentSession ? 
+                    'Session is active! Submit the first theory.' :
+                    'Waiting for mempool to heat up...';
+                const emoji = currentSession ? '🚀' : '⏳';
+                
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <div style="font-size: 3rem; margin-bottom: 10px;">${emoji}</div>
+                        <p>${statusText}</p>
+                    </div>
+                `;
+                return;
+            }
+
+            // Sort answers by score (upvotes - downvotes)
+            const sortedAnswers = [...currentSession.answers].sort((a, b) => {
+                const scoreA = (a.upvotes || 0) - (a.downvotes || 0);
+                const scoreB = (b.upvotes || 0) - (b.downvotes || 0);
+                return scoreB - scoreA;
+            });
+
+            container.innerHTML = sortedAnswers.map(answer => {
+                const userVote = userVotes.get(answer.id);
+                const score = (answer.upvotes || 0) - (answer.downvotes || 0);
+                const isWinner = currentSession.ended && currentSession.winner?.id === answer.id;
+                
+                return `
+                    <div class="answer-card ${isWinner ? 'winner' : ''}">
+                        ${isWinner ? '<div class="winner-banner">🏆 Winning Theory!</div>' : ''}
+                        <div class="answer-header">
+                            <div class="answer-author">${escapeHtml(answer.author)}</div>
+                            <div class="vote-section">
+                                <button class="vote-btn ${userVote === 'up' ? 'upvoted' : ''}" 
+                                        onclick="vote(${answer.id}, 'up')"
+                                        ${currentSession.ended ? 'disabled' : ''}>👍</button>
+                                <div class="vote-count">${score}</div>
+                                <button class="vote-btn ${userVote === 'down' ? 'downvoted' : ''}" 
+                                        onclick="vote(${answer.id}, 'down')"
+                                        ${currentSession.ended ? 'disabled' : ''}>👎</button>
+                            </div>
+                        </div>
+                        <div class="answer-text">${escapeHtml(answer.theory)}</div>
+                        <div class="answer-timestamp">${answer.timestamp}</div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function renderSessionHistory() {
+            const historySection = document.getElementById('session-history');
+            const historyContainer = document.getElementById('history-container');
+            
+            if (sessionHistory.length === 0) {
+                historySection.style.display = 'none';
+                return;
+            }
+
+            historySection.style.display = 'block';
+            
+            historyContainer.innerHTML = sessionHistory.map(session => {
+                const duration = session.endTime ? 
+                    Math.round((session.endTime - session.startTime) / (1000 * 60)) : 0;
+                
+                return `
+                    <div class="history-item">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                            <strong>Session ${new Date(session.startTime).toLocaleDateString()}</strong>
+                            <span style="opacity: 0.7;">${duration} minutes</span>
+                        </div>
+                        ${session.winner ? `
+                            <div><strong>Winner:</strong> ${escapeHtml(session.winner.author)}</div>
+                            <div style="margin-top: 5px; font-style: italic;">"${escapeHtml(session.winner.theory)}"</div>
+                            <div style="margin-top: 5px; opacity: 0.8;">Score: ${(session.winner.upvotes || 0) - (session.winner.downvotes || 0)} votes</div>
+                        ` : '<div>No theories submitted</div>'}
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function updateActiveAnswersCount() {
+            const count = currentSession ? currentSession.answers.length : 0;
+            document.getElementById('active-answers').textContent = count;
+        }
+
+        function startPeriodicUpdates() {
+            updateInterval = setInterval(updateMempoolData, UPDATE_INTERVAL);
+        }
+
+        function showError(message) {
+            const errorDiv = document.createElement('div');
+            errorDiv.className = 'error-message';
+            errorDiv.textContent = message;
+            document.querySelector('.header').appendChild(errorDiv);
+            
+            setTimeout(() => errorDiv.remove(), 5000);
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // Initialize app when page loads
+        document.addEventListener('DOMContentLoaded', initializeApp);
+
+        // Cleanup on page unload
+        window.addEventListener('beforeunload', () => {
+            if (updateInterval) {
+                clearInterval(updateInterval);
+            }
+        });
+    </script>
+</body>
+</html>
